@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Chat.Core/Chat.Core.csproj" />
+  <Project Path="Chat.Infrastructure/Chat.Infrastructure.csproj" />
+  <Project Path="Chat.UseCases/Chat.UseCases.csproj" />
+  <Project Path="Chat.Web/Chat.Web.csproj" />
+</Solution>
