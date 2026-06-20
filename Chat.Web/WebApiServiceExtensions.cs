@@ -34,7 +34,7 @@ public static class WebApiServiceExtensions
         ValidIssuer = jwt?.Issuer ?? "ChatApi",
         ValidAudience = jwt?.Audience ?? "ChatClient",
         IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(jwt?.Secret ?? "super_secret_key_that_is_long_enough_32_bytes")
+            Encoding.UTF8.GetBytes(jwt?.Secret ?? throw new InvalidOperationException("JWTOptions:Secret is missing from configuration."))
         ),
         ClockSkew = TimeSpan.Zero
       };
