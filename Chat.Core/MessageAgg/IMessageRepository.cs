@@ -5,6 +5,9 @@ using Chat.Core.ConversationChatAgg.VO;
 
 namespace Chat.Core.MessageAgg;
 
+public record ConversationUpdateDto(ConversationId Id, MessageId LastSentMessageId);
+public record UserConversationUpdateDto(UserId UserId, ConversationId ConversationId, MessageId LastReadMessageId);
+
 public interface IMessageRepository : IRepository<Message>
 {
   Task<List<Message>> GetConversationMessagesAsync(
@@ -18,8 +21,8 @@ public interface IMessageRepository : IRepository<Message>
 
   Task SaveBatchAsync(
       IEnumerable<Message> listMess,
-      IEnumerable<ConversationChat> listCon,
-      IEnumerable<UserConversation> listUserCon,
+      IEnumerable<ConversationUpdateDto> listCon,
+      IEnumerable<UserConversationUpdateDto> listUserCon,
       CancellationToken ct = default);
 
   Task SaveOfflineMessageAsync(UserId receiverId, byte[] msg, CancellationToken ct = default);

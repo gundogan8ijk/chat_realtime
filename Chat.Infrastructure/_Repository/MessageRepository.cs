@@ -1,7 +1,3 @@
-
-
-
-
 using Chat.Infrastructure.Data.Context;
 using StackExchange.Redis;
 
@@ -63,8 +59,8 @@ public class MessageRepository : EfRepository<Message>, IMessageRepository
 
   public async Task SaveBatchAsync(
       IEnumerable<Message> listMess,
-      IEnumerable<ConversationChat> listCon,
-      IEnumerable<UserConversation> listUserCon,
+      IEnumerable<ConversationUpdateDto> listCon,
+      IEnumerable<UserConversationUpdateDto> listUserCon,
       CancellationToken ct = default)
   {
     using var transaction = await _dbContext.Database.BeginTransactionAsync(ct);

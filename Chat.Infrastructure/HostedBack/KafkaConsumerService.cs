@@ -136,7 +136,7 @@ public class KafkaConsumerService : BackgroundService
                             .ToList();
 
     var listConver = latestConversation.Select(x => 
-        CreateConversationUpdate(
+        new ConversationUpdateDto(
             ConversationId.From(x!.KeyConChat), 
             x.Mess.Id)
     ).ToList();
@@ -146,7 +146,7 @@ public class KafkaConsumerService : BackgroundService
                                 .ToList();
 
     var listUserCon = latestUserConversation.Select(y => 
-        CreateUserConversationUpdate(
+        new UserConversationUpdateDto(
             y!.Mess.SenderUserId, 
             ConversationId.From(y.KeyConChat), 
             y.Mess.Id)
@@ -157,8 +157,8 @@ public class KafkaConsumerService : BackgroundService
 
   private async Task TrySaveBatchAsync(
       List<Message> listMess, 
-      List<ConversationChat> listConver,
-      List<UserConversation> listUserCon, 
+      List<ConversationUpdateDto> listConver,
+      List<UserConversationUpdateDto> listUserCon, 
       ConsumeResult<string, byte[]> lastConsume,
       CancellationToken ct)
   {
@@ -195,45 +195,6 @@ public class KafkaConsumerService : BackgroundService
         await Task.Delay(1300, ct);
       }
     }
-  }
-
-  private static ConversationChat CreateConversationUpdate(ConversationId id, MessageId lastSentMessageId)
-  {
-    var conv = (ConversationChat)Activator.CreateInstance(typeof(ConversationChat), true)!;
-    
-    // Set Id (under EntityBase)
-    typeof(EntityBase<ConversationChat, ConversationId>)
-        .GetProperty("Id")?
-        .SetValue(conv, id);
-        
-    // Set LastSentMessageId
-    typeof(ConversationChat)
-        .GetProperty("LastSentMessageId")?
-        .SetValue(conv, lastSentMessageId);
-        
-    return conv;
-  }
-
-  private static UserConversation CreateUserConversationUpdate(UserId userId, ConversationId conversationId, MessageId lastReadMessageId)
-  {
-    var uc = (UserConversation)Activator.CreateInstance(typeof(UserConversation), true)!;
-    
-    // Set UserId
-    typeof(UserConversation)
-        .GetProperty("UserId")?
-        .SetValue(uc, userId);
-        
-    // Set ConversationId
-    typeof(UserConversation)
-        .GetProperty("ConversationId")?
-        .SetValue(uc, conversationId);
-        
-    // Set LastReadMessageId
-    typeof(UserConversation)
-        .GetProperty("LastReadMessageId")?
-        .SetValue(uc, lastReadMessageId);
-        
-    return uc;
   }
 
   public override void Dispose()

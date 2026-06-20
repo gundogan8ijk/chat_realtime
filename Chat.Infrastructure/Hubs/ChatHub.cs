@@ -1,10 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
-
-
-
-
 using Chat.UseCases.ChatApp;
 using Chat.Infrastructure._Services.Kafka;
 using Chat.Infrastructure.Serializers;
@@ -109,9 +105,25 @@ public class ChatHub : Hub<IChatClient>
       string? replyMsgContent)
   {
     var myIdString = Context.UserIdentifier!;
-    var myId = UserId.From(Guid.Parse(myIdString));
-    var partnerId = UserId.From(Guid.Parse(partnerIdString));
-    var roomIdDb = UserId.From(Guid.Parse(roomIdDbString)); // In legacy structure, roomId is mapped as ReceiverId (UserId VO)
+    if (!Guid.TryParse(myIdString, out var myGuid))
+    {
+      _logger.LogWarning("Không thể xác định myId");
+      return;
+    }
+    if (!Guid.TryParse(partnerIdString, out var partnerGuid))
+    {
+      _logger.LogWarning("partnerIdString không đúng định dạng Guid: {PartnerId}", partnerIdString);
+      return;
+    }
+    if (!Guid.TryParse(roomIdDbString, out var roomGuid))
+    {
+      _logger.LogWarning("roomIdDbString không đúng định dạng Guid: {RoomId}", roomIdDbString);
+      return;
+    }
+
+    var myId = UserId.From(myGuid);
+    var partnerId = UserId.From(partnerGuid);
+    var roomIdDb = UserId.From(roomGuid); // In legacy structure, roomId is mapped as ReceiverId (UserId VO)
 
     string fullname = "User";
     try
@@ -168,11 +180,8 @@ public class ChatHub : Hub<IChatClient>
     var isOnline = await _repoOnline.IsUserOnlineAsync(partnerId);
     if (isOnline)
     {
-      var connections = await _repoOnline.GetUserConnectionsAsync(partnerId);
-      foreach (var connId in connections)
-      {
-        await Clients.Client(connId).ReceiveMessage("MsgSingle", msgDto);
-      }
+      // Sử dụng cơ chế native của SignalR để gửi đến toàn bộ các connections của user
+      await Clients.User(partnerIdString).ReceiveMessage("MsgSingle", msgDto);
     }
     else
     {
