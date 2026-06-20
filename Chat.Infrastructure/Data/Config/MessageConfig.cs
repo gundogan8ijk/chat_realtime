@@ -50,6 +50,14 @@ public class MessageConfig : IEntityTypeConfiguration<Message>
         .WithMany(m => m.Replies)
         .HasForeignKey(m => m.ParentMessageId)
         .OnDelete(DeleteBehavior.Restrict);
+
+    builder.Navigation(m => m.Replies)
+        .HasField("_replies")
+        .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+    builder.Navigation(m => m.MessageLikes)
+        .HasField("_messageLikes")
+        .UsePropertyAccessMode(PropertyAccessMode.Field);
   }
 }
 

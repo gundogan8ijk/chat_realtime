@@ -25,6 +25,10 @@ public class ConversationChatConfig : IEntityTypeConfiguration<ConversationChat>
         .WithOne()
         .HasForeignKey<ConversationChat>(x => x.LastSentMessageId)
         .OnDelete(DeleteBehavior.SetNull);
+
+    builder.Navigation(x => x.UserConversations)
+        .HasField("_userConversations")
+        .UsePropertyAccessMode(PropertyAccessMode.Field);
   }
 }
 

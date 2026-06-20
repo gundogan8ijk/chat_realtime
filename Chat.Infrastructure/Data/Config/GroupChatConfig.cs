@@ -43,6 +43,10 @@ public class GroupChatConfig : IEntityTypeConfiguration<GroupChat>
         .WithOne()
         .HasForeignKey<GroupChat>(x => x.LastSentMessageId)
         .OnDelete(DeleteBehavior.SetNull);
+
+    builder.Navigation(x => x.UserGroups)
+        .HasField("_userGroups")
+        .UsePropertyAccessMode(PropertyAccessMode.Field);
   }
 }
 

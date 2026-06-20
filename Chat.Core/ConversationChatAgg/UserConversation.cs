@@ -12,7 +12,8 @@ public class UserConversation
   public ConversationId ConversationId { get; private set; }
   public MessageId?     LastReadMessageId { get; private set; }
 
-  public ICollection<RoomMessage>? RoomUserConversation { get; private set; }
+  private readonly HashSet<RoomMessage> _roomUserConversation = [];
+  public IReadOnlyCollection<RoomMessage> RoomUserConversation => _roomUserConversation.AsReadOnly();
 
   private UserConversation() { }
 
@@ -22,8 +23,7 @@ public class UserConversation
         Id             = Guid.NewGuid(),
         UserId         = userId,
         PartnerId      = partnerId,
-        ConversationId = conversationId,
-        RoomUserConversation = new HashSet<RoomMessage>()
+        ConversationId = conversationId
       };
 
   public void UpdateLastRead(MessageId messageId) => LastReadMessageId = messageId;

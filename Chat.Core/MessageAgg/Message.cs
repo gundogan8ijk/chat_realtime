@@ -21,8 +21,11 @@ public class Message : EntityBase<Message, MessageId>, IAggregateRoot
 
   // ── Navigation ───────────────────────────────────────────────────
   public Message?                  ParentMessage { get; private set; }
-  public ICollection<Message>?     Replies       { get; private set; }
-  public ICollection<MessageLike>? MessageLikes  { get; private set; }
+  private readonly HashSet<Message> _replies = [];
+  public IReadOnlyCollection<Message> Replies => _replies.AsReadOnly();
+
+  private readonly HashSet<MessageLike> _messageLikes = [];
+  public IReadOnlyCollection<MessageLike> MessageLikes => _messageLikes.AsReadOnly();
 
   private Message() { }
 
@@ -41,9 +44,7 @@ public class Message : EntityBase<Message, MessageId>, IAggregateRoot
       MessageBody     = body,
       MessageType     = type ?? MessageType.Text,
       ParentMessageId = parentMessageId,
-      CreateDate      = DateTime.UtcNow,
-      Replies         = new HashSet<Message>(),
-      MessageLikes    = new HashSet<MessageLike>()
+      CreateDate      = DateTime.UtcNow
     };
 
     msg.RegisterDomainEvent(new MessageSentEvent(msg));

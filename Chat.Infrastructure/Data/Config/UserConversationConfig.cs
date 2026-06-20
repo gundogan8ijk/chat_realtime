@@ -48,6 +48,10 @@ public class UserConversationConfig : IEntityTypeConfiguration<UserConversation>
 
     builder.HasIndex("PartnerId", "ConversationId")
         .IsUnique();
+
+    builder.Navigation(x => x.RoomUserConversation)
+        .HasField("_roomUserConversation")
+        .UsePropertyAccessMode(PropertyAccessMode.Field);
   }
 }
 

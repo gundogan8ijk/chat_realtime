@@ -13,7 +13,8 @@ public class GroupChat : EntityBase<GroupChat, GroupChatId>, IAggregateRoot
   public bool       IsPrivate         { get; private set; } = true;
   public MessageId? LastSentMessageId { get; private set; }
 
-  public ICollection<UserGroup>? UserGroups { get; private set; }
+  private readonly HashSet<UserGroup> _userGroups = [];
+  public IReadOnlyCollection<UserGroup> UserGroups => _userGroups.AsReadOnly();
 
   private GroupChat() { }
 
@@ -24,8 +25,7 @@ public class GroupChat : EntityBase<GroupChat, GroupChatId>, IAggregateRoot
         Name       = name,
         AvatarUrl  = avatarUrl,
         IsPrivate  = isPrivate,
-        CreateDate = DateTime.UtcNow,
-        UserGroups = new HashSet<UserGroup>()
+        CreateDate = DateTime.UtcNow
       };
 
   public void UpdateLastMessage(MessageId messageId) => LastSentMessageId = messageId;
