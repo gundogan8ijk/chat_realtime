@@ -55,6 +55,7 @@ public static class InfrastructureServiceExtensions
     // Services
     services.AddScoped<IChatHubService, ChatHubService>();
     services.AddScoped<IChatQueryService, ChatQueryService>();
+    services.AddScoped<IChatCommandService, ChatCommandService>();
     services.AddScoped<ITokenService, TokenService>();
     services.AddScoped<ICookieService, CookieService>();
     services.AddSingleton<KafkaProducerService>();

@@ -234,7 +234,12 @@ return 'OK'
   private TemplateTokenDto GenerateAccessToken(List<Claim> claims)
   {
     var jwtTokenHandler = new JwtSecurityTokenHandler();
-    var key = Encoding.UTF8.GetBytes(_configuration["JWTOptions:Secret"] ?? "super_secret_key_that_is_long_enough_32_bytes");
+    var secretKey = _configuration["JWTOptions:Secret"];
+    if (string.IsNullOrEmpty(secretKey))
+    {
+      throw new InvalidOperationException("JWT Secret key is not configured in JWTOptions:Secret.");
+    }
+    var key = Encoding.UTF8.GetBytes(secretKey);
     var expires = DateTime.UtcNow.AddMinutes(int.Parse(_configuration["JWTOptions:ExpirationTimeInMinutes"] ?? "15"));
 
     var tokenDescriptor = new JwtSecurityToken(
