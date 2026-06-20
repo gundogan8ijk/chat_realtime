@@ -13,7 +13,6 @@ public class GetOrCreatRoomDialoChat(IMediator mediator)
   public override void Configure()
   {
     Post("/api/roomchat/roomChat");
-    AllowAnonymous();
   }
 
   public override async Task<Results<Ok<string>, BadRequest<string>, UnauthorizedHttpResult>>

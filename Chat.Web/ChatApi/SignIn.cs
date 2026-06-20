@@ -1,19 +1,15 @@
 using Chat.Core.AccountAgg;
-
-using Chat.Infrastructure.Data.Context;
-using Microsoft.AspNetCore.Identity;
+using Chat.UseCases.ChatApp.Commands;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.EntityFrameworkCore;
 
 namespace Chat.Web.ChatApi;
 
-public class SignIn(
-    UserManager<ApplicationUser> userManager,
-    ChatDbContext dbContext,
-    ITokenService tokenService,
-    ICookieService cookieService)
+public class SignIn(IMediator mediator, ICookieService cookieService)
   : Endpoint<SignInRequest, Results<Ok<SignInResponse>, BadRequest<string>>>
 {
+  private readonly IMediator _mediator = mediator;
+  private readonly ICookieService _cookieService = cookieService;
+
   public override void Configure()
   {
     Post("/api/AccountNormal/SignIn");
@@ -22,30 +18,19 @@ public class SignIn(
 
   public override async Task<Results<Ok<SignInResponse>, BadRequest<string>>> ExecuteAsync(SignInRequest req, CancellationToken ct)
   {
-    var user = await userManager.FindByEmailAsync(req.Email);
-    if (user == null || !await userManager.CheckPasswordAsync(user, req.Password))
+    var command = new SignInCommand(req.Email, req.Password, req.DeviceId);
+    var result = await _mediator.Send(command, ct);
+
+    if (!result.IsSuccess)
     {
-      return TypedResults.BadRequest("Tài khoản hoặc mật khẩu không chính xác");
+      return TypedResults.BadRequest(result.Errors.FirstOrDefault() ?? "Tài khoản hoặc mật khẩu không chính xác");
     }
 
-    var profile = await dbContext.UserProfiles
-        .FirstOrDefaultAsync(p => p.Id == UserId.From(user.Id), ct);
+    var val = result.Value;
+    _cookieService.SetTokenCookies(val.AccessToken, val.RefreshToken);
 
-    if (profile == null)
-    {
-      return TypedResults.BadRequest("Không tìm thấy thông tin profile của người dùng");
-    }
-
-    var tokens = await tokenService.GenerateTokensAsync(user, profile, DeviceId.From(req.DeviceId));
-    if (tokens.AccessToken == null || tokens.RefreshToken == null)
-    {
-      return TypedResults.BadRequest("Tạo token thất bại");
-    }
-
-    cookieService.SetTokenCookies(tokens.AccessToken, tokens.RefreshToken);
-
-    var accessTokenExp = new DateTimeOffset(tokens.AccessToken.ExpiresAt).ToUnixTimeMilliseconds();
-    var refreshTokenExp = new DateTimeOffset(tokens.RefreshToken.ExpiresAt).ToUnixTimeMilliseconds();
+    var accessTokenExp = new DateTimeOffset(val.AccessToken.ExpiresAt).ToUnixTimeMilliseconds();
+    var refreshTokenExp = new DateTimeOffset(val.RefreshToken.ExpiresAt).ToUnixTimeMilliseconds();
 
     return TypedResults.Ok(new SignInResponse
     {

@@ -1,19 +1,13 @@
-using Chat.Core.AccountAgg;
-
-using Chat.Infrastructure.Data.Context;
 using Chat.UseCases.ChatApp.Commands;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Chat.Web.ChatApi;
 
-public class SignUp(
-    UserManager<ApplicationUser> userManager,
-    RoleManager<ApplicationRole> roleManager,
-    ChatDbContext dbContext,
-    IMediator mediator)
+public class SignUp(IMediator mediator)
   : Endpoint<SignUpRequest, Results<Ok<SignUpResponse>, BadRequest<string>>>
 {
+  private readonly IMediator _mediator = mediator;
+
   public override void Configure()
   {
     Post("/api/AccountNormal/SignUp");
@@ -22,46 +16,21 @@ public class SignUp(
 
   public override async Task<Results<Ok<SignUpResponse>, BadRequest<string>>> ExecuteAsync(SignUpRequest req, CancellationToken ct)
   {
-    var user = new ApplicationUser
-    {
-      UserName = req.Email,
-      Email = req.Email
-    };
+    var command = new SignUpCommand(req.Email, req.Password, req.FirstName, req.LastName);
+    var result = await _mediator.Send(command, ct);
 
-    var result = await userManager.CreateAsync(user, req.Password);
-    if (!result.Succeeded)
+    if (!result.IsSuccess)
     {
-      var errorMsg = string.Join("\n", result.Errors.Select(e => e.Description));
-      return TypedResults.BadRequest(errorMsg);
+      return TypedResults.BadRequest(result.Errors.FirstOrDefault() ?? "Đăng ký thất bại");
     }
 
-    // Role check and create
-    const string defaultRole = "User";
-    if (!await roleManager.RoleExistsAsync(defaultRole))
-    {
-      await roleManager.CreateAsync(new ApplicationRole { Name = defaultRole, ValueRole = 1 });
-    }
-    await userManager.AddToRoleAsync(user, defaultRole);
-
-    // Save profile to database
-    var userId = UserId.From(user.Id);
-    var firstNameVal = FirstName.From(req.FirstName);
-    var lastNameVal = LastName.From(req.LastName);
-    
-    var profile = UserProfile.Create(userId, firstNameVal, lastNameVal, null);
-    await dbContext.UserProfiles.AddAsync(profile, ct);
-    await dbContext.SaveChangesAsync(ct);
-
-    // Save profile to Redis using command
-    var redisCmd = new AddProfileUserRedisCommand(userId, firstNameVal, lastNameVal, req.Email, null);
-    await mediator.Send(redisCmd, ct);
-
+    var val = result.Value;
     return TypedResults.Ok(new SignUpResponse
     {
-      Succeeded = true,
-      Email = req.Email,
-      LastName = req.LastName,
-      FirstName = req.FirstName
+      Succeeded = val.Succeeded,
+      Email = val.Email,
+      LastName = val.LastName,
+      FirstName = val.FirstName
     });
   }
 }

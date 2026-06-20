@@ -1,26 +1,21 @@
 using System.Security.Claims;
 using System.Text;
 using Chat.Core.AccountAgg;
-
-using Chat.Infrastructure.Data.Context;
 using Chat.UseCases.ChatApp.Commands;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.EntityFrameworkCore;
 
 namespace Chat.Web.ChatApi;
 
 public class GoogleCallback(
-    UserManager<ApplicationUser> userManager,
-    RoleManager<ApplicationRole> roleManager,
-    ChatDbContext dbContext,
-    ITokenService tokenService,
     ICookieService cookieService,
     IMediator mediator)
   : EndpointWithoutRequest<Results<RedirectHttpResult, BadRequest<string>>>
 {
+  private readonly ICookieService _cookieService = cookieService;
+  private readonly IMediator _mediator = mediator;
+
   public override void Configure()
   {
     Get("/api/auth/google/callback");
@@ -67,88 +62,19 @@ public class GoogleCallback(
       return TypedResults.BadRequest("Google account claims missing email or identifier");
     }
 
-    var info = new UserLoginInfo("Google", googleId, "Google");
-    var user = await userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
+    var command = new GoogleCallbackCommand(email, googleId, firstName, lastName, avatarUrlStr, deviceIdStr);
+    var result = await _mediator.Send(command, ct);
 
-    if (user == null)
+    if (!result.IsSuccess)
     {
-      user = await userManager.FindByEmailAsync(email);
-
-      if (user == null)
-      {
-        user = new ApplicationUser
-        {
-          UserName = email,
-          Email = email,
-          EmailConfirmed = true
-        };
-
-        var createResult = await userManager.CreateAsync(user);
-        if (!createResult.Succeeded)
-        {
-          var errors = string.Join(", ", createResult.Errors.Select(x => x.Description));
-          return TypedResults.BadRequest($"Không thể tạo tài khoản từ Google: {errors}");
-        }
-
-        const string defaultRole = "User";
-        if (!await roleManager.RoleExistsAsync(defaultRole))
-        {
-          await roleManager.CreateAsync(new ApplicationRole { Name = defaultRole, ValueRole = 1 });
-        }
-        await userManager.AddToRoleAsync(user, defaultRole);
-
-        // Save profile to database
-        var userId = UserId.From(user.Id);
-        var firstNameVal = FirstName.From(firstName);
-        var lastNameVal = LastName.From(lastName);
-        var avatarUrlVal = string.IsNullOrEmpty(avatarUrlStr) ? (AvatarUrl?)null : AvatarUrl.From(avatarUrlStr);
-
-        var profile = UserProfile.Create(userId, firstNameVal, lastNameVal, avatarUrlVal);
-        await dbContext.UserProfiles.AddAsync(profile, ct);
-        await dbContext.SaveChangesAsync(ct);
-
-        // Save profile to Redis
-        var redisCmd = new AddProfileUserRedisCommand(userId, firstNameVal, lastNameVal, email, avatarUrlVal);
-        await mediator.Send(redisCmd, ct);
-      }
-
-      var linkResult = await userManager.AddLoginAsync(user, info);
-      if (!linkResult.Succeeded)
-      {
-        var errors = string.Join(", ", linkResult.Errors.Select(x => x.Description));
-        return TypedResults.BadRequest($"Không thể liên kết tài khoản Google: {errors}");
-      }
+      return TypedResults.BadRequest(result.Errors.FirstOrDefault() ?? "Google authentication failed");
     }
 
-    var dbProfile = await dbContext.UserProfiles
-        .FirstOrDefaultAsync(p => p.Id == UserId.From(user.Id), ct);
+    var val = result.Value;
+    _cookieService.SetTokenCookies(val.AccessToken, val.RefreshToken);
 
-    if (dbProfile == null)
-    {
-      // If profile is missing (e.g. legacy migrated user), create one
-      var userId = UserId.From(user.Id);
-      var firstNameVal = FirstName.From(firstName);
-      var lastNameVal = LastName.From(lastName);
-      var avatarUrlVal = string.IsNullOrEmpty(avatarUrlStr) ? (AvatarUrl?)null : AvatarUrl.From(avatarUrlStr);
-
-      dbProfile = UserProfile.Create(userId, firstNameVal, lastNameVal, avatarUrlVal);
-      await dbContext.UserProfiles.AddAsync(dbProfile, ct);
-      await dbContext.SaveChangesAsync(ct);
-
-      var redisCmd = new AddProfileUserRedisCommand(userId, firstNameVal, lastNameVal, email, avatarUrlVal);
-      await mediator.Send(redisCmd, ct);
-    }
-
-    var tokens = await tokenService.GenerateTokensAsync(user, dbProfile, DeviceId.From(deviceIdStr));
-    if (tokens.AccessToken == null || tokens.RefreshToken == null)
-    {
-      return TypedResults.BadRequest("Tạo token thất bại");
-    }
-
-    cookieService.SetTokenCookies(tokens.AccessToken, tokens.RefreshToken);
-
-    var accessExp = new DateTimeOffset(tokens.AccessToken.ExpiresAt).ToUnixTimeMilliseconds().ToString();
-    var refreshExp = new DateTimeOffset(tokens.RefreshToken.ExpiresAt).ToUnixTimeMilliseconds().ToString();
+    var accessExp = new DateTimeOffset(val.AccessToken.ExpiresAt).ToUnixTimeMilliseconds().ToString();
+    var refreshExp = new DateTimeOffset(val.RefreshToken.ExpiresAt).ToUnixTimeMilliseconds().ToString();
     var queryParams = $"accessTokenExp={accessExp}&refreshTokenExp={refreshExp}";
     var base64Query = Convert.ToBase64String(Encoding.UTF8.GetBytes(queryParams));
 

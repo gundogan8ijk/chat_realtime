@@ -13,7 +13,6 @@ public class SearchUser(IMediator mediator)
   public override void Configure()
   {
     Get("/api/searchuser/email");
-    AllowAnonymous();
   }
 
   public override async Task<Results<Ok<UserSearchDto>, BadRequest<string>, UnauthorizedHttpResult>>

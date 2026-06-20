@@ -31,8 +31,5 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options)
     base.OnModelCreating(modelBuilder);
     modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
   }
-
-  public override int SaveChanges() =>
-        SaveChangesAsync().GetAwaiter().GetResult();
 }
 

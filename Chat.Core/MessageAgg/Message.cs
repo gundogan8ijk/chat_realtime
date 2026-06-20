@@ -2,19 +2,17 @@ using Chat.Core._ValueObjects;
 using Chat.Core.MessageAgg.Enums;
 using Chat.Core.MessageAgg.Events;
 using Chat.Core.MessageAgg.VO;
-using ProtoBuf;
 
 namespace Chat.Core.MessageAgg;
 
-[ProtoContract]
 public class Message : EntityBase<Message, MessageId>, IAggregateRoot
 {
-  [ProtoMember(1)] public UserId         SenderUserId    { get; private set; }
-  [ProtoMember(2)] public UserId         ReceiverId      { get; private set; }
-  [ProtoMember(3)] public MessageContent? MessageBody    { get; private set; }
-  [ProtoMember(4)] public DateTime        CreateDate     { get; private set; } = DateTime.UtcNow;
-  [ProtoMember(5)] public MessageType     MessageType    { get; private set; } = MessageType.Text;
-  [ProtoMember(6)] public MessageId?      ParentMessageId { get; private set; }
+  public UserId         SenderUserId    { get; private set; }
+  public UserId         ReceiverId      { get; private set; }
+  public MessageContent? MessageBody    { get; private set; }
+  public DateTime        CreateDate     { get; private set; } = DateTime.UtcNow;
+  public MessageType     MessageType    { get; private set; } = MessageType.Text;
+  public MessageId?      ParentMessageId { get; private set; }
 
   public DeliveryStatus Status   { get; private set; } = DeliveryStatus.Sending;
   public bool           IsDelete { get; private set; } = false;
@@ -34,11 +32,12 @@ public class Message : EntityBase<Message, MessageId>, IAggregateRoot
       UserId          receiverId,
       MessageContent? body            = null,
       MessageType?    type            = null,
-      MessageId?      parentMessageId = null)
+      MessageId?      parentMessageId = null,
+      MessageId?      id              = null)
   {
     var msg = new Message
     {
-      Id              = MessageId.From(Guid.NewGuid()),
+      Id              = id ?? MessageId.From(Guid.NewGuid()),
       SenderUserId    = senderUserId,
       ReceiverId      = receiverId,
       MessageBody     = body,

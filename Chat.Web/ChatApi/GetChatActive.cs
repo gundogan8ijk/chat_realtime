@@ -13,7 +13,6 @@ public class GetChatActive(IMediator mediator)
   public override void Configure()
   {
     Get("/api/chatactive/ListUserChat");
-    AllowAnonymous();
   }
 
   public override async Task<Results<Ok<List<ItemChatDto>>, BadRequest<string>, UnauthorizedHttpResult>>

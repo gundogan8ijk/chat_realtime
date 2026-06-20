@@ -121,12 +121,34 @@ public class KafkaConsumerService : BackgroundService
   private async Task ProcessBatchAsync(List<ConsumeResult<string, byte[]>> batch, CancellationToken ct)
   {
     var lastConsume = batch.Last();
-    var messagesWithTs = batch.Select(x => new
+    var messagesWithTs = batch.Select(x =>
     {
-      Mess = ProtobufSerializer.Deserialize<Message>(x.Message.Value),
-      KeyConChat = Guid.Parse(x.Message.Key),
-      KeyUserCon = x.Message.Key + ProtobufSerializer.Deserialize<Message>(x.Message.Value).SenderUserId.Value.ToString(),
-      Timespan = x.Message.Timestamp.UnixTimestampMs
+      var dto = ProtobufSerializer.Deserialize<KafkaMessageDto>(x.Message.Value);
+      var senderUserId = UserId.From(dto.SenderUserId);
+      var receiverId = UserId.From(dto.ReceiverId);
+      var messageBody = dto.MessageBody != null ? MessageContent.From(dto.MessageBody) : null;
+      var messageType = Chat.Core.MessageAgg.Enums.MessageType.FromName(dto.MessageType);
+      var parentMsgId = dto.ParentMessageId.HasValue ? MessageId.From(dto.ParentMessageId.Value) : null;
+      var msgId = MessageId.From(dto.Id);
+
+      var msg = Message.Create(
+          senderUserId: senderUserId,
+          receiverId: receiverId,
+          body: messageBody,
+          type: messageType,
+          parentMessageId: parentMsgId,
+          id: msgId
+      );
+
+      Guid.TryParse(x.Message.Key, out var keyConChat);
+
+      return new
+      {
+        Mess = msg,
+        KeyConChat = keyConChat,
+        KeyUserCon = x.Message.Key + senderUserId.Value.ToString(),
+        Timespan = x.Message.Timestamp.UnixTimestampMs
+      };
     }).ToList();
 
     var listMess = messagesWithTs.Select(x => x.Mess).ToList();

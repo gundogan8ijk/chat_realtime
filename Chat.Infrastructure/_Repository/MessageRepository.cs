@@ -68,8 +68,18 @@ public class MessageRepository : EfRepository<Message>, IMessageRepository
     {
       if (listMess.Any())
       {
-        await _dbContext.Messages.AddRangeAsync(listMess, ct);
-        await _dbContext.SaveChangesAsync(ct);
+        var msgIds = listMess.Select(m => m.Id).ToList();
+        var existingMsgIds = await _dbContext.Messages
+            .Where(m => msgIds.Contains(m.Id))
+            .Select(m => m.Id)
+            .ToListAsync(ct);
+
+        var newMessages = listMess.Where(m => !existingMsgIds.Contains(m.Id)).ToList();
+        if (newMessages.Any())
+        {
+          await _dbContext.Messages.AddRangeAsync(newMessages, ct);
+          await _dbContext.SaveChangesAsync(ct);
+        }
       }
 
       foreach (var con in listCon)

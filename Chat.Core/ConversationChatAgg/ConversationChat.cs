@@ -20,6 +20,12 @@ public class ConversationChat : EntityBase<ConversationChat, ConversationId>, IA
         Id                = ConversationId.From(Guid.NewGuid())
       };
 
+  public void AddParticipant(UserId userId, UserId partnerId)
+  {
+    var participant = UserConversation.Create(userId, partnerId, Id);
+    _userConversations.Add(participant);
+  }
+
   public void UpdateLastMessage(MessageId messageId) => LastSentMessageId = messageId;
 }
 

@@ -13,7 +13,6 @@ public class GetFrameRoomChat(IMediator mediator)
   public override void Configure()
   {
     Get("/api/roomchat/{RoomId}");
-    AllowAnonymous(); // Hub itself requires Auth, but let's allow endpoint auth checking via token or standard authorize
   }
 
   public override async Task<Results<Ok<FrameDialoChatDto>, BadRequest<string>, UnauthorizedHttpResult>>

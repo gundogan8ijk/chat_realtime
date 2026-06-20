@@ -191,7 +191,18 @@ public class ChatHub : Hub<IChatClient>
     }
 
     // Đẩy vào Kafka để xử lý ghi vào cơ sở dữ liệu sau (eventual consistency)
-    var kafkaMsg = _kafkaProducer.CreateMsg(msgDb, roomIdDb.Value.ToString());
+    var kafkaDto = new KafkaMessageDto
+    {
+      Id = msgDb.Id.Value,
+      SenderUserId = msgDb.SenderUserId.Value,
+      ReceiverId = msgDb.ReceiverId.Value,
+      MessageBody = msgDb.MessageBody?.Value,
+      CreateDate = msgDb.CreateDate,
+      MessageType = msgDb.MessageType.Name,
+      ParentMessageId = msgDb.ParentMessageId?.Value
+    };
+
+    var kafkaMsg = _kafkaProducer.CreateMsg(kafkaDto, roomIdDb.Value.ToString());
     var topic = _configuration["Kafka:Topic1"] ?? "chat-messages";
     await _kafkaProducer.AddProduceAsync(topic, kafkaMsg, CancellationToken.None);
   }
